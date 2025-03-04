@@ -21,7 +21,7 @@ export class EducatorService {
     await this.educatorRepository.save(createEducatorDto);
     return {
       statusCode: 200,
-      message: 'Disciplina criada com sucesso',
+      message: 'Educador criada com sucesso',
     };
   }
 
@@ -40,7 +40,7 @@ export class EducatorService {
       throw new HttpException(
         {
           statusCode: HttpStatus.NOT_FOUND,
-          message: 'Nenhuma disciplina encontrada com os filtros fornecidos.',
+          message: 'Nenhum educador encontrada com os filtros fornecidos.',
         },
         HttpStatus.NOT_FOUND,
       );
@@ -69,7 +69,8 @@ export class EducatorService {
     };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} educator`;
+  async remove(id: number) {
+    const timetable = await this.findOne(id);
+    await this.educatorRepository.remove(timetable);
   }
 }
