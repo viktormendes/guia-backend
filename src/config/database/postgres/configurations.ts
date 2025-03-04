@@ -9,7 +9,7 @@ const AppDataSource = new DataSource({
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
   entities: [`dist/**/*.entity{.ts,.js}`],
-  migrations: [`dist/database/migration/{.ts,*.js}`],
+  migrations: [`dist/src/database/migration/{.ts,*.js}`],
   migrationsRun: true,
   logging: true,
 });
