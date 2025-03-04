@@ -16,9 +16,8 @@ async function bootstrap() {
     }),
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
   SwaggerModule.setup('api', app, document);
 
   await app.listen(process.env.SERVER_PORT ?? 3000);
