@@ -85,7 +85,6 @@ export class TimetableService {
       );
     }
 
-    // Mapeia os resultados para retornar apenas `days` e `hours`
     return timetables.map((timetable) => ({
       days: timetable.days,
       hours: timetable.hours,
