@@ -52,6 +52,7 @@ export class PrerequisiteService {
     });
 
     return prerequisites.map((prerequisite) => ({
+      id: prerequisite.id,
       disciplineId: prerequisite.discipline.id,
       prerequisiteId: prerequisite.prerequisite.id,
     }));
