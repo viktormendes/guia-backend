@@ -10,10 +10,8 @@ import {
 import { TimetableService } from './timetable.service';
 import { CreateTimetableDto } from './dto/create-timetable.dto';
 import { UpdateTimetableDto } from './dto/update-timetable.dto';
-import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('timetable')
-@Public()
 export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
@@ -27,7 +25,6 @@ export class TimetableController {
     return this.timetableService.findAll();
   }
 
-  @Public()
   @Get('discipline/:disciplineId')
   findAllByDisciplineId(@Param('disciplineId') disciplineId: string) {
     return this.timetableService.findAllByDisciplineId(+disciplineId);
