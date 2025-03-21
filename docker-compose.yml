@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  postgres:
+  db:
     image: postgres:13
-    container_name: guia_postgres
+    container_name: postgres_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -12,11 +12,32 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - guia_network
+
+  app:
+    build: .
+    container_name: nestjs_app
+    depends_on:
+      - db
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: guia_db
+      SERVER_PORT: 5000
+      GOOGLE_CLIENT_ID: 1077747038249-upvgthqlup8ifa35js6noe6dipoj0lhm.apps.googleusercontent.com
+      GOOGLE_SECRET: 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
+      GOOGLE_CALLBACK_URL: http://localhost:5000/auth/google/callback
+      JWT_SECRET: 9f8c2d5a6b3e4f2a1c8d7e9b0a6f5d3c
+      JWT_EXPIRE_IN: 3600s
+      REFRESH_JWT_SECRET: 5a4c3b2d1e6f7a8d9c0b3e4f2a8c7d6e
+      REFRESH_JWT_EXPIRE_IN: 7d
+      URL_FRONTEND: http://localhost:3000
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    command: npm run start:prod
 
 volumes:
   postgres_data:
-
-networks:
-  guia_network:
