@@ -61,10 +61,26 @@ export class TimetableService {
     return this.timetableRepository.save(timetable);
   }
 
-  async findAll(): Promise<Timetable[]> {
-    return this.timetableRepository.find({
+  async findAll(): Promise<
+    {
+      id: number;
+      disciplineId: number;
+      days: string;
+      hours: string;
+      educator: any;
+    }[]
+  > {
+    const timetables = await this.timetableRepository.find({
       relations: ['discipline', 'educator'],
     });
+
+    return timetables.map((timetable) => ({
+      id: timetable.id,
+      disciplineId: timetable.discipline.id,
+      days: timetable.days,
+      hours: timetable.hours,
+      educator: timetable.educator, // Retorna o objeto completo do Educator
+    }));
   }
 
   async findAllByDisciplineId(

@@ -46,13 +46,15 @@ export class PrerequisiteService {
     return this.prerequisiteRepository.save(prerequisiteEntity);
   }
 
-  /**
-   * Retorna todos os pré-requisitos cadastrados.
-   */
-  async findAll(): Promise<Prerequisite[]> {
-    return this.prerequisiteRepository.find({
+  async findAll(): Promise<any[]> {
+    const prerequisites = await this.prerequisiteRepository.find({
       relations: ['discipline', 'prerequisite'],
     });
+
+    return prerequisites.map((prerequisite) => ({
+      disciplineId: prerequisite.discipline.id,
+      prerequisiteId: prerequisite.prerequisite.id,
+    }));
   }
 
   /**

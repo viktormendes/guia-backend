@@ -78,6 +78,45 @@ export class DisciplineService {
     return disciplines;
   }
 
+  async getAllDisciplinesWithTimetable(): Promise<
+    {
+      name: string;
+      semester: number;
+      workload: number;
+      type: string;
+      code: string;
+      timetables: { days: string; hours: string; teacher?: string | null }[];
+      pre_requiriments: string[];
+    }[]
+  > {
+    const disciplines = await this.disciplineRepository.find({
+      relations: [
+        'timetables.educator',
+        'prerequisites.prerequisite',
+        'prerequisites.discipline',
+      ],
+    });
+
+    console.log(disciplines[10].prerequisites[0].prerequisite.code);
+
+    return disciplines.map((discipline) => ({
+      name: discipline.name,
+      semester: discipline.semester,
+      workload: discipline.workload,
+      type: discipline.type,
+      code: discipline.code,
+      timetables: discipline.timetables.map((timetable) => ({
+        days: timetable.days,
+        hours: timetable.hours,
+        teacher: timetable.educator?.name ?? null,
+      })),
+      pre_requiriments:
+        discipline.prerequisites.length > 0
+          ? discipline.prerequisites.map((pr) => pr.prerequisite.code)
+          : [],
+    }));
+  }
+
   async findOne(id: number): Promise<Discipline> {
     const discipline = await this.disciplineRepository.findOne({
       where: { id },

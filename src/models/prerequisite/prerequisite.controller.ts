@@ -11,8 +11,10 @@ import {
 import { PrerequisiteService } from './prerequisite.service';
 import { Prerequisite } from './entities/prerequisite.entity';
 import { CreatePrerequisiteDto } from './dto/create-prerequisite.dto';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('prerequisites')
+@Public()
 export class PrerequisiteController {
   constructor(private readonly prerequisiteService: PrerequisiteService) {}
 
@@ -28,6 +30,7 @@ export class PrerequisiteController {
     return this.prerequisiteService.findAll();
   }
 
+  @Public()
   @Get(':disciplineId')
   async findByDiscipline(
     @Param('disciplineId', ParseIntPipe) disciplineId: number,

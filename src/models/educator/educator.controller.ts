@@ -13,6 +13,7 @@ import { CreateEducatorDto } from './dto/create-educator.dto';
 import { UpdateEducatorDto } from './dto/update-educator.dto';
 import { GetAllEducatorQuery } from './dto/get-all-educator-query.dto';
 import { Educator } from './entities/educator.entity';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('educator')
 export class EducatorController {
@@ -23,6 +24,7 @@ export class EducatorController {
     return this.educatorService.create(createEducatorDto);
   }
 
+  @Public()
   @Get()
   findAll(@Query() query: GetAllEducatorQuery): Promise<Educator[]> {
     return this.educatorService.findAll(query);

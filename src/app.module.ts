@@ -6,6 +6,8 @@ import { DisciplineModule } from './models/discipline/discipline.module';
 import { EducatorModule } from './models/educator/educator.module';
 import { TimetableModule } from './models/timetable/timetable.module';
 import { PrerequisiteModule } from './models/prerequisite/prerequisite.module';
+import { AuthModule } from './authentication/auth.module';
+import { UserModule } from './models/user/user.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { PrerequisiteModule } from './models/prerequisite/prerequisite.module';
     EducatorModule,
     TimetableModule,
     PrerequisiteModule,
+    AuthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
