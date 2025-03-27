@@ -95,7 +95,7 @@ export class TimetableService {
     }[]
   > {
     const timetables = await this.timetableRepository.find({
-      relations: ['discipline', 'educator', 'room'],
+      relations: ['discipline', 'educator', 'room', 'room.block'],
     });
 
     return timetables.map((timetable) => ({
