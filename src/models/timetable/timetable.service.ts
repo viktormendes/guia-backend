@@ -6,6 +6,7 @@ import { Educator } from '../educator/entities/educator.entity';
 import { Repository } from 'typeorm';
 import { Discipline } from '../discipline/entities/discipline.entity';
 import { Timetable } from './entities/timetable.entity';
+import { Room } from '../room/entities/room.entity';
 
 @Injectable()
 export class TimetableService {
@@ -16,9 +17,13 @@ export class TimetableService {
     private readonly educatorRepository: Repository<Educator>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
+    @InjectRepository(Room)
+    private readonly roomRepository: Repository<Room>,
   ) {}
+
   async create(createTimetableDto: CreateTimetableDto) {
-    const { disciplineId, educatorId, days, hours } = createTimetableDto;
+    const { disciplineId, educatorId, roomId, days, hours } =
+      createTimetableDto;
 
     const discipline = await this.disciplineRepository.findOne({
       where: { id: disciplineId },
@@ -28,7 +33,7 @@ export class TimetableService {
       throw new HttpException(
         {
           statusCode: HttpStatus.NOT_FOUND,
-          message: 'Timetable não encontrada.',
+          message: 'Disciplina não encontrada.',
         },
         HttpStatus.NOT_FOUND,
       );
@@ -51,9 +56,27 @@ export class TimetableService {
       }
     }
 
+    let room: Room | null = null;
+    if (roomId) {
+      room = await this.roomRepository.findOne({
+        where: { id: roomId },
+      });
+
+      if (!room) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: 'Sala não encontrada.',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+    }
+
     const timetable = this.timetableRepository.create({
       discipline,
       educator: educator ?? undefined,
+      room: room ?? undefined,
       days,
       hours,
     });
@@ -68,10 +91,11 @@ export class TimetableService {
       days: string;
       hours: string;
       educator: any;
+      room: any;
     }[]
   > {
     const timetables = await this.timetableRepository.find({
-      relations: ['discipline', 'educator'],
+      relations: ['discipline', 'educator', 'room'],
     });
 
     return timetables.map((timetable) => ({
@@ -79,16 +103,17 @@ export class TimetableService {
       disciplineId: timetable.discipline.id,
       days: timetable.days,
       hours: timetable.hours,
-      educator: timetable.educator, // Retorna o objeto completo do Educator
+      educator: timetable.educator,
+      room: timetable.room,
     }));
   }
 
   async findAllByDisciplineId(
     disciplineId: number,
-  ): Promise<{ days: string; hours: string }[]> {
+  ): Promise<{ days: string; hours: string; room: any }[]> {
     const timetables = await this.timetableRepository.find({
       where: { discipline: { id: disciplineId } },
-      relations: ['discipline', 'educator'],
+      relations: ['discipline', 'educator', 'room'],
     });
 
     if (!timetables || timetables.length === 0) {
@@ -104,13 +129,14 @@ export class TimetableService {
     return timetables.map((timetable) => ({
       days: timetable.days,
       hours: timetable.hours,
+      room: timetable.room,
     }));
   }
 
   async findOne(id: number): Promise<Timetable> {
     const timetable = await this.timetableRepository.findOne({
       where: { id },
-      relations: ['discipline', 'educator'],
+      relations: ['discipline', 'educator', 'room'],
     });
 
     if (!timetable) {
@@ -130,18 +156,21 @@ export class TimetableService {
     id: number,
     updateTimetableDto: UpdateTimetableDto,
   ): Promise<Timetable> {
+    const { disciplineId, educatorId, roomId, days, hours } =
+      updateTimetableDto;
+
     const timetable = await this.findOne(id);
 
-    if (updateTimetableDto.disciplineId) {
+    if (disciplineId) {
       const discipline = await this.disciplineRepository.findOne({
-        where: { id: updateTimetableDto.disciplineId },
+        where: { id: disciplineId },
       });
 
       if (!discipline) {
         throw new HttpException(
           {
             statusCode: HttpStatus.NOT_FOUND,
-            message: 'Timetable não encontrada.',
+            message: 'Disciplina não encontrada.',
           },
           HttpStatus.NOT_FOUND,
         );
@@ -150,36 +179,63 @@ export class TimetableService {
       timetable.discipline = discipline;
     }
 
-    if (updateTimetableDto.educatorId !== undefined) {
-      if (updateTimetableDto.educatorId === null) {
-        timetable.educator = null;
-      } else {
-        const educator = await this.educatorRepository.findOne({
-          where: { id: updateTimetableDto.educatorId },
-        });
+    if (educatorId) {
+      const educator = await this.educatorRepository.findOne({
+        where: { id: educatorId },
+      });
 
-        if (!educator) {
-          throw new HttpException(
-            {
-              statusCode: HttpStatus.NOT_FOUND,
-              message: 'Educador não encontrado.',
-            },
-            HttpStatus.NOT_FOUND,
-          );
-        }
-
-        timetable.educator = educator;
+      if (!educator) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: 'Educador não encontrado.',
+          },
+          HttpStatus.NOT_FOUND,
+        );
       }
+
+      timetable.educator = educator;
     }
 
-    timetable.days = updateTimetableDto.days ?? timetable.days;
-    timetable.hours = updateTimetableDto.hours ?? timetable.hours;
+    if (roomId) {
+      const room = await this.roomRepository.findOne({
+        where: { id: roomId },
+      });
+
+      if (!room) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: 'Sala não encontrada.',
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      timetable.room = room;
+    }
+
+    if (days) {
+      timetable.days = days;
+    }
+
+    if (hours) {
+      timetable.hours = hours;
+    }
 
     return this.timetableRepository.save(timetable);
   }
 
   async remove(id: number): Promise<void> {
-    const timetable = await this.findOne(id);
-    await this.timetableRepository.remove(timetable);
+    const result = await this.timetableRepository.delete(id);
+    if (result.affected === 0) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Horário não encontrado.',
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
   }
 }
