@@ -8,6 +8,8 @@ import { TimetableModule } from './models/timetable/timetable.module';
 import { PrerequisiteModule } from './models/prerequisite/prerequisite.module';
 import { AuthModule } from './authentication/auth.module';
 import { UserModule } from './models/user/user.module';
+import { BlockModule } from './models/block/block.module';
+import { RoomModule } from './models/room/room.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { UserModule } from './models/user/user.module';
     PrerequisiteModule,
     AuthModule,
     UserModule,
+    BlockModule,
+    RoomModule,
   ],
   controllers: [AppController],
   providers: [AppService],
