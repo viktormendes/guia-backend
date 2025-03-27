@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsEnum } from 'class-validator';
+import { RoomType } from '../enums/room-type.enum';
 
 export class CreateRoomDto {
   @IsString()
@@ -12,6 +13,10 @@ export class CreateRoomDto {
   @IsNumber()
   @IsNotEmpty()
   capacity: number;
+
+  @IsEnum(RoomType)
+  @IsNotEmpty()
+  type: RoomType;
 
   @IsNumber()
   @IsNotEmpty()

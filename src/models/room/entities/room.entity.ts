@@ -8,6 +8,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Timetable } from '../../timetable/entities/timetable.entity';
+import { RoomType } from '../enums/room-type.enum';
 
 @Entity()
 export class Room {
@@ -22,6 +23,13 @@ export class Room {
 
   @Column()
   capacity: number;
+
+  @Column({
+    type: 'enum',
+    enum: RoomType,
+    default: RoomType.CLASSROOM,
+  })
+  type: RoomType;
 
   @Column({ name: 'block_id' })
   block_id: number;
