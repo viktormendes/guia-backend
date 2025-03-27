@@ -9,10 +9,11 @@ export class CreateTableTimetable1741020387277 implements MigrationInterface {
           id SERIAL PRIMARY KEY,
           discipline_id INT REFERENCES discipline(id) ON DELETE CASCADE,
           educator_id INT REFERENCES educator(id) ON DELETE SET NULL,
+          room_id INT REFERENCES room(id) ON DELETE SET NULL,
           days VARCHAR(20) NOT NULL,
           hours VARCHAR(20) NOT NULL
       );
-        `);
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
