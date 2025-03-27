@@ -15,6 +15,10 @@ export class CreateTimetableDto {
   @IsOptional()
   educatorId?: number;
 
+  @IsInt()
+  @IsOptional()
+  roomId?: number;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
