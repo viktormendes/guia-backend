@@ -1,5 +1,6 @@
 import { Discipline } from 'src/models/discipline/entities/discipline.entity';
 import { Educator } from 'src/models/educator/entities/educator.entity';
+import { Room } from 'src/models/room/entities/room.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -25,6 +26,13 @@ export class Timetable {
   })
   @JoinColumn({ name: 'educator_id' })
   educator: Educator | null;
+
+  @ManyToOne(() => Room, (room) => room.timetables, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'room_id' })
+  room: Room | null;
 
   @Column({ type: 'varchar', length: 20 })
   days: string;
