@@ -19,7 +19,7 @@ import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth/jwt-auth.guard'
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 
-@Roles(Role.USER)
+@Roles(Role.EDITOR)
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
