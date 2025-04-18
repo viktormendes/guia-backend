@@ -36,6 +36,7 @@ export class AuthController {
     res.cookie('jwt', accessToken, {
       httpOnly: true,
       secure: true,
+      domain: 'guia-admin-one.vercel.app',
       sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24,
     });
