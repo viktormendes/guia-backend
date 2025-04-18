@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateTableBlock1743085366600 implements MigrationInterface {
+export class CreateTableBlock1643085366600 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     queryRunner.query(`
             CREATE TABLE block (
