@@ -29,26 +29,11 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Request() req, @Res({ passthrough: true }) res: Response) {
-    const { id, accessToken, refreshToken } = await this.authService.login(
-      req.user.id,
-    );
+    const data = await this.authService.login(req.user.id);
 
-    res.cookie('jwt', accessToken, {
-      httpOnly: true,
-      secure: true,
-      domain: 'guia-admin-one.vercel.app',
-      sameSite: 'none',
-      maxAge: 1000 * 60 * 60 * 24,
-    });
+    res.redirect(`${process.env.URL_FRONTEND}?token=${data.accessToken}`);
 
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
-
-    return { message: 'Login successful' };
+    return data;
   }
 
   @UseGuards(RefreshAuthGuard)
