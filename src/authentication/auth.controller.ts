@@ -19,7 +19,6 @@ import { RefreshAuthGuard } from './guards/refresh-auth/refresh-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth/google-auth.guard';
 import { Public } from 'src/common/decorators/public.decorator';
-import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -28,10 +27,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req, @Res({ passthrough: true }) res: Response) {
-    const data = await this.authService.login(req.user.id);
-
-    res.redirect(`${process.env.URL_FRONTEND}?token=${data.accessToken}`);
+  async login(@Request() req) {
+    return this.authService.login(req.user.id);
   }
 
   @UseGuards(RefreshAuthGuard)
