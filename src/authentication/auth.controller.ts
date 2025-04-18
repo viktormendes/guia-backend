@@ -19,6 +19,7 @@ import { RefreshAuthGuard } from './guards/refresh-auth/refresh-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth/google-auth.guard';
 import { Public } from 'src/common/decorators/public.decorator';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -27,8 +28,26 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req) {
-    return this.authService.login(req.user.id);
+  async login(@Request() req, @Res({ passthrough: true }) res: Response) {
+    const { id, accessToken, refreshToken } = await this.authService.login(
+      req.user.id,
+    );
+
+    res.cookie('jwt', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24,
+    });
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    return { message: 'Login successful' };
   }
 
   @UseGuards(RefreshAuthGuard)
