@@ -32,8 +32,6 @@ export class AuthController {
     const data = await this.authService.login(req.user.id);
 
     res.redirect(`${process.env.URL_FRONTEND}?token=${data.accessToken}`);
-
-    return data;
   }
 
   @UseGuards(RefreshAuthGuard)
