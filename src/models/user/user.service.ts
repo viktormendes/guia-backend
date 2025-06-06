@@ -31,8 +31,10 @@ export class UserService {
     });
   }
 
-  findAll() {
-    return `This action returns all user`;
+  async findAll() {
+    return await this.UserRepo.find({
+      select: ['id', 'firstName', 'lastName', 'email', 'role', 'avatarUrl'],
+    });
   }
 
   async findOne(id: number) {
@@ -49,11 +51,17 @@ export class UserService {
     });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    await this.UserRepo.update(id, updateUserDto);
+    return this.findOne(id);
   }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  
+  async remove(id: number) {
+    const user = await this.UserRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    await this.UserRepo.remove(user);
+    return { message: `User with id ${id} removed successfully` };
   }
 }
