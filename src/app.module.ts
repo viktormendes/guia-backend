@@ -10,7 +10,7 @@ import { AuthModule } from './authentication/auth.module';
 import { UserModule } from './models/user/user.module';
 import { BlockModule } from './models/block/block.module';
 import { RoomModule } from './models/room/room.module';
-
+import { HelpModule } from './models/help/help.module';
 @Module({
   imports: [
     PostgresConfigModule,
@@ -22,6 +22,7 @@ import { RoomModule } from './models/room/room.module';
     UserModule,
     BlockModule,
     RoomModule,
+    HelpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
