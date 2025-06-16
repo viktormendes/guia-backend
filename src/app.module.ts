@@ -11,6 +11,7 @@ import { UserModule } from './models/user/user.module';
 import { BlockModule } from './models/block/block.module';
 import { RoomModule } from './models/room/room.module';
 import { HelpModule } from './models/help/help.module';
+import { ChatModule } from './models/chat/chat.module';
 @Module({
   imports: [
     PostgresConfigModule,
@@ -23,6 +24,7 @@ import { HelpModule } from './models/help/help.module';
     BlockModule,
     RoomModule,
     HelpModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
