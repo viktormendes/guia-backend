@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/await-thenable */
 import { Injectable } from '@nestjs/common';
@@ -6,10 +8,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectRepository(User) private UserRepo: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private UserRepo: Repository<User>,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async updateHashedRefreshToken(
     userId: number,
@@ -55,5 +61,14 @@ export class UserService {
 
   remove(id: number) {
     return `This action removes a #${id} user`;
+  }
+
+  async validateToken(token: string): Promise<User | null> {
+    try {
+      const payload = this.jwtService.verify(token);
+      return await this.UserRepo.findOne({ where: { id: payload.sub } });
+    } catch (error) {
+      return null;
+    }
   }
 }

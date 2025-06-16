@@ -19,11 +19,11 @@ import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth/jwt-auth.guard'
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 
-@Roles(Role.EDITOR)
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @Roles(Role.EDITOR)
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
