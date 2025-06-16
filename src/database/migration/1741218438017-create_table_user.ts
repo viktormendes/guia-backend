@@ -47,7 +47,7 @@ export class CreateTableUser1741218438017 implements MigrationInterface {
           {
             name: 'role',
             type: 'enum',
-            enum: ['USER', 'ADMIN', 'EDITOR'],
+            enum: ['USER', 'ADMIN', 'EDITOR', 'HELPER', 'STUDENT'],
             default: "'USER'",
           },
           {
