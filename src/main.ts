@@ -22,7 +22,7 @@ async function bootstrap() {
   });
   SwaggerModuleConfig.setup(app);
 
-  await app.listen(process.env.SERVER_PORT ?? 3000);
+  await app.listen(process.env.SERVER_PORT ?? 3000, '0.0.0.0');
 }
 
 void bootstrap();
