@@ -13,6 +13,8 @@ import { HelpService } from './help.service';
 import { CreateHelpDto } from './dto/create-help.dto';
 import { HelpStatus } from './enums/help-status.enum';
 import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth/jwt-auth.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { Role } from 'src/common/enums/role.enum';
 
 @Controller('help')
 @UseGuards(JwtAuthGuard)
@@ -41,5 +43,17 @@ export class HelpController {
     @Request() req,
   ) {
     return this.helpService.updateStatus(+id, status, req.user);
+  }
+
+  @Roles(Role.STUDENT)
+  @Get('student/me')
+  findMyHelps(@Request() req) {
+    return this.helpService.findHelpsByStudent(req.user.id);
+  }
+
+  @Roles(Role.HELPER)
+  @Get('helper/me')
+  findHelpsIHelped(@Request() req) {
+    return this.helpService.findHelpsByHelper(req.user.id);
   }
 }

@@ -82,4 +82,24 @@ export class HelpService {
 
     return this.helpRepository.save(help);
   }
+
+  async findHelpsByStudent(studentId: number): Promise<Help[]> {
+    return this.helpRepository.find({
+      where: { student: { id: studentId } },
+      relations: ['student', 'helper'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async findHelpsByHelper(helperId: number): Promise<Help[]> {
+    return this.helpRepository.find({
+      where: { helper: { id: helperId } },
+      relations: ['student', 'helper'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
 }
