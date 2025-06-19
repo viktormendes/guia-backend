@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -11,7 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { UseGuards, UnauthorizedException } from '@nestjs/common';
 import { WsJwtAuthGuard } from '../../../authentication/guards/ws-jwt-auth.guard';
 import { ChatService } from '../chat.service';
-import { HelpService } from '../../help/help.service';
+import { HelpRequestService } from '../../help/help-request.service';
 import { UserService } from '../../user/user.service';
 import { HelpStatus } from '../../help/enums/help-status.enum';
 import { Role } from 'src/common/enums/role.enum';
@@ -28,12 +30,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private connectedClients: Map<string, { userId: number; role: string }> =
+  private connectedClients: Map<string, { userId: number; role: Role }> =
     new Map();
 
   constructor(
     private readonly chatService: ChatService,
-    private readonly helpService: HelpService,
+    private readonly helpRequestService: HelpRequestService,
     private readonly userService: UserService,
   ) {}
 
@@ -84,7 +86,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         throw new UnauthorizedException('Cliente não autenticado');
       }
 
-      const help = await this.helpService.findOne(helpId);
+      const help = await this.helpRequestService.findOne(helpId);
       if (!help) {
         throw new Error('Solicitação de ajuda não encontrada');
       }
@@ -149,7 +151,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         throw new UnauthorizedException('Cliente não autenticado');
       }
 
-      const help = await this.helpService.findOne(data.helpId);
+      const help = await this.helpRequestService.findOne(data.helpId);
       if (!help) {
         throw new Error('Solicitação de ajuda não encontrada');
       }
@@ -219,7 +221,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
       }
 
-      const help = await this.helpService.findOne(helpId);
+      const help = await this.helpRequestService.findOne(helpId);
       if (!help) {
         throw new Error('Solicitação de ajuda não encontrada');
       }
@@ -232,9 +234,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       // Atualizar status e atribuir ajudante
-      await this.helpService.updateStatus(helpId, HelpStatus.IN_PROGRESS, {
-        id: clientInfo.userId,
-      } as any);
+      await this.helpRequestService.updateStatus(
+        helpId,
+        HelpStatus.IN_PROGRESS,
+        {
+          id: clientInfo.userId,
+        } as any,
+      );
 
       // Notificar todos os usuários conectados
       this.server.emit('helpStatusChanged', {
@@ -265,7 +271,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         throw new UnauthorizedException('Cliente não autenticado');
       }
 
-      const help = await this.helpService.findOne(helpId);
+      const help = await this.helpRequestService.findOne(helpId);
       if (!help) {
         throw new Error('Solicitação de ajuda não encontrada');
       }
@@ -288,7 +294,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       // Atualizar status
-      await this.helpService.updateStatus(helpId, HelpStatus.COMPLETED);
+      await this.helpRequestService.updateStatus(helpId, HelpStatus.COMPLETED);
 
       // Notificar todos os usuários conectados
       this.server.emit('helpStatusChanged', {
