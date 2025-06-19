@@ -19,9 +19,9 @@ export class Help {
   @Column({
     type: 'enum',
     enum: HelpType,
-    default: HelpType.CHAT,
+    name: 'type',
   })
-  type: HelpType;
+  help_type: HelpType;
 
   @Column({
     type: 'enum',
@@ -30,11 +30,23 @@ export class Help {
   })
   status: HelpStatus;
 
+  @Column({ nullable: true })
+  description: string;
+
+  @Column({ name: 'cancellation_reason', nullable: true })
+  cancellation_reason: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+
   @ManyToOne(() => User)
   @JoinColumn({ name: 'student_id' })
   student: User;
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'helper_id' })
   helper: User;
 
@@ -45,9 +57,6 @@ export class Help {
     details?: any;
   }[];
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
   @Column({ name: 'started_at', nullable: true })
   startedAt: Date;
 
@@ -56,7 +65,4 @@ export class Help {
 
   @Column({ name: 'cancelled_at', nullable: true })
   cancelledAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

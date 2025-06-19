@@ -1,13 +1,22 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Help } from './entities/help.entity';
+import { User } from '../user/entities/user.entity';
+import { HelpRequestService } from './help-request.service';
 import { HelpController } from './help.controller';
-import { HelpService } from './help.service';
+import { HelperModule } from '../helper/helper.module';
+import { FirebaseModule } from '../../firebase/firebase.module';
+import { RedisModule } from '../../redis/redis.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Help])],
-  providers: [HelpService],
+  imports: [
+    TypeOrmModule.forFeature([Help, User]),
+    HelperModule,
+    FirebaseModule,
+    RedisModule,
+  ],
   controllers: [HelpController],
-  exports: [HelpService],
+  providers: [HelpRequestService],
+  exports: [HelpRequestService],
 })
 export class HelpModule {}
