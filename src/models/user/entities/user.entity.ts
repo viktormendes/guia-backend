@@ -7,12 +7,13 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import * as bcrypt from 'bcrypt';
 import { Role } from 'src/common/enums/role.enum';
 
-@Entity()
+@Entity('user')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -23,7 +24,7 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column({ nullable: true })
@@ -44,6 +45,12 @@ export class User {
 
   @Column({ type: 'text', nullable: true })
   hashedRefreshToken: string | null;
+
+  @Column({ name: 'fcm_token', nullable: true })
+  fcm_token: string;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @BeforeInsert()
   async hashPassword() {
