@@ -12,6 +12,7 @@ export class RedisService implements OnModuleDestroy {
     this.client = createClient({
       url: this.configService.get<string>('REDIS_URL') + '?family=0',
     });
+    console.log(this.configService.get<string>('REDIS_URL') + '?family=0');
 
     this.client.connect().catch(console.error);
 
