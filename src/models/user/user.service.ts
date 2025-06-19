@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
+import { SendFCMTokenDto } from './dto/send-fcm_token.dto';
 
 @Injectable()
 export class UserService {
@@ -70,5 +71,15 @@ export class UserService {
     } catch (error) {
       return null;
     }
+  }
+
+  async updateFcmToken(
+    userId: number,
+    sendFCMTokenDto: SendFCMTokenDto,
+  ): Promise<void> {
+    console.log('token recebido: ', sendFCMTokenDto.fcm_token, sendFCMTokenDto);
+    await this.UserRepo.update(userId, {
+      fcm_token: sendFCMTokenDto.fcm_token,
+    });
   }
 }
