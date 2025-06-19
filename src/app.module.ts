@@ -12,6 +12,9 @@ import { BlockModule } from './models/block/block.module';
 import { RoomModule } from './models/room/room.module';
 import { HelpModule } from './models/help/help.module';
 import { ChatModule } from './models/chat/chat.module';
+import { RedisModule } from './redis/redis.module';
+import { HelperModule } from './models/helper/helper.module';
+
 @Module({
   imports: [
     PostgresConfigModule,
@@ -25,6 +28,8 @@ import { ChatModule } from './models/chat/chat.module';
     RoomModule,
     HelpModule,
     ChatModule,
+    RedisModule,
+    HelperModule,
   ],
   controllers: [AppController],
   providers: [AppService],
