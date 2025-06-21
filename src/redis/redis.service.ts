@@ -10,16 +10,28 @@ export class RedisService implements OnModuleDestroy {
 
   constructor(private configService: ConfigService) {
     const url = this.configService.get<string>('REDIS_URL');
+
+    if (!url) {
+      throw new Error('REDIS_URL não está configurada');
+    }
+
     console.log('Conectando ao Redis em:', url);
     this.client = createClient({ url });
 
     this.client.on('error', (err) => console.error('Redis Client Error', err));
 
     this.client.connect().catch(console.error);
+
+    // Inicializar o ioredis também
+    this.redis = new Redis(url);
+
+    this.redis.on('error', (err) => console.error('ioredis Error', err));
+    this.redis.on('connect', () => console.log('ioredis conectado'));
   }
 
   async onModuleDestroy() {
     await this.client.quit();
+    await this.redis.quit();
   }
 
   async set(
