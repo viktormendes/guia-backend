@@ -40,6 +40,9 @@ export class FirebaseService {
         body: payload.body,
       },
       data: payload.data,
+      android: {
+        priority: 'high',
+      },
     };
 
     try {
