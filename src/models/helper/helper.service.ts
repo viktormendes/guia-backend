@@ -1,21 +1,32 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from '../user/entities/user.entity';
 import { HelpType } from '../help/enums/help-type.enum';
 import { RedisService } from '../../redis/redis.service';
+import { FirebaseService } from '../../firebase/firebase.service';
+import { HelpRequestService } from '../help/help-request.service';
+import { HelpStatus } from '../help/enums/help-status.enum';
+import { HelperGateway } from './helper.gateway';
 
 @Injectable()
 export class HelperService implements OnModuleInit {
   private readonly QUEUE_PREFIX = 'helper_queue:';
   private readonly AVAILABILITY_PREFIX = 'helper_availability:';
   private readonly MISSED_CALLS_PREFIX = 'helper_missed_calls:';
-  private readonly NOTIFICATION_TIMEOUT = 30; // 30 segundos
+  private readonly NOTIFICATION_TIMEOUT = 20; // 20 segundos para aceitar
+  private readonly PENDING_HELP_PREFIX = 'pending_help:';
+  private readonly CANCELLED_HELP_PREFIX = 'cancelled_help:';
+  private readonly ACCEPTED_HELP_PREFIX = 'accepted_help:';
 
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly redisService: RedisService,
+    private readonly firebaseService: FirebaseService,
+    @Inject(forwardRef(() => HelpRequestService))
+    private readonly helpRequestService: HelpRequestService,
+    private readonly helperGateway: HelperGateway,
   ) {}
 
   async onModuleInit() {
@@ -27,6 +38,9 @@ export class HelperService implements OnModuleInit {
     const missedCallsKeys = await this.redisService.keys(
       `${this.MISSED_CALLS_PREFIX}*`,
     );
+    const pendingHelpKeys = await this.redisService.keys(
+      `${this.PENDING_HELP_PREFIX}*`,
+    );
 
     if (queueKeys.length > 0) {
       await this.redisService.del(queueKeys);
@@ -36,6 +50,9 @@ export class HelperService implements OnModuleInit {
     }
     if (missedCallsKeys.length > 0) {
       await this.redisService.del(missedCallsKeys);
+    }
+    if (pendingHelpKeys.length > 0) {
+      await this.redisService.del(pendingHelpKeys);
     }
   }
 
@@ -49,6 +66,18 @@ export class HelperService implements OnModuleInit {
 
   private getMissedCallsKey(helperId: number): string {
     return `${this.MISSED_CALLS_PREFIX}${helperId}`;
+  }
+
+  private getPendingHelpKey(helpId: number): string {
+    return `${this.PENDING_HELP_PREFIX}${helpId}`;
+  }
+
+  private getCancelledHelpKey(helpId: number): string {
+    return `${this.CANCELLED_HELP_PREFIX}${helpId}`;
+  }
+
+  private getAcceptedHelpKey(helpId: number): string {
+    return `${this.ACCEPTED_HELP_PREFIX}${helpId}`;
   }
 
   async getAvailableHelpers(helpType: HelpType): Promise<User[]> {
@@ -130,7 +159,7 @@ export class HelperService implements OnModuleInit {
       return false;
     }
 
-    // Configurar timeout de 30 segundos
+    // Configurar timeout de 20 segundos
     await this.redisService.set(
       notificationKey,
       '1',
@@ -141,12 +170,224 @@ export class HelperService implements OnModuleInit {
     return true;
   }
 
+  async processHelpRequest(
+    helpId: number,
+    helpType: HelpType,
+  ): Promise<User | null> {
+    console.log(
+      `Processando solicitação de ajuda ${helpId} do tipo ${helpType}`,
+    );
+
+    // Marcar ajuda como pendente
+    const pendingHelpKey = this.getPendingHelpKey(helpId);
+    await this.redisService.set(pendingHelpKey, helpType, 'EX', 300); // 5 minutos timeout
+
+    return await this.notifyNextHelperInQueue(helpId, helpType);
+  }
+
+  private async notifyNextHelperInQueue(
+    helpId: number,
+    helpType: HelpType,
+  ): Promise<User | null> {
+    const helper = await this.getNextHelper(helpType);
+
+    if (!helper) {
+      console.log(`Nenhum helper disponível para ${helpType}`);
+      await this.cancelHelpRequest(helpId, 'Nenhum helper disponível');
+      return null;
+    }
+
+    // Verificar se o helper ainda está disponível
+    const isAvailable = await this.isHelperAvailable(helper.id, helpType);
+    if (!isAvailable) {
+      console.log(
+        `Helper ${helper.id} não está mais disponível, tentando próximo`,
+      );
+      return await this.notifyNextHelperInQueue(helpId, helpType);
+    }
+
+    // Notificar helper (push e socket)
+    const wasNotified = await this.notifyHelper(helper.id, helpType);
+    if (!wasNotified) {
+      console.log(
+        `Não foi possível notificar helper ${helper.id}, tentando próximo`,
+      );
+      return await this.notifyNextHelperInQueue(helpId, helpType);
+    }
+
+    // Enviar notificação FCM
+    if (helper.fcm_token) {
+      try {
+        await this.firebaseService.sendNotification({
+          token: helper.fcm_token,
+          title: 'Nova solicitação de ajuda',
+          body: `Nova solicitação de ${helpType} recebida. Você tem 20 segundos para aceitar.`,
+          data: {
+            helpId: helpId.toString(),
+            helpType: helpType,
+            action: 'accept_help',
+            timeout: '20',
+          },
+        });
+        console.log(`Notificação FCM enviada para helper ${helper.id}`);
+      } catch (error) {
+        console.error(
+          `Erro ao enviar notificação FCM para helper ${helper.id}:`,
+          error,
+        );
+      }
+    }
+
+    // Enviar notificação via socket
+    this.helperGateway.sendNewHelpRequest(helper.id, {
+      helpId,
+      tipo: helpType,
+      title: 'Nova solicitação de ajuda',
+      body: `Nova solicitação de ${helpType} recebida. Você tem 20 segundos para aceitar.`,
+      timeout: 20,
+    });
+
+    // Configurar timeout para verificar se o helper aceitou
+    setTimeout(() => {
+      void this.checkHelperResponse(helpId, helper.id, helpType);
+    }, this.NOTIFICATION_TIMEOUT * 1000);
+
+    return helper;
+  }
+
+  private async checkHelperResponse(
+    helpId: number,
+    helperId: number,
+    helpType: HelpType,
+  ): Promise<void> {
+    const notificationKey = `${this.QUEUE_PREFIX}${helpType}:${helperId}`;
+    const pendingHelpKey = this.getPendingHelpKey(helpId);
+
+    // Verificar se a ajuda ainda está pendente
+    const isStillPending = await this.redisService.get(pendingHelpKey);
+    if (!isStillPending) {
+      console.log(`Ajuda ${helpId} já não está mais pendente`);
+      return;
+    }
+
+    // Verificar se o helper respondeu
+    const hasResponded = await this.redisService.get(notificationKey);
+    if (hasResponded) {
+      console.log(`Helper ${helperId} aceitou a ajuda ${helpId}`);
+      return;
+    }
+
+    console.log(
+      `Helper ${helperId} não respondeu no tempo limite, tentando próximo helper`,
+    );
+
+    // Incrementar contador de chamadas perdidas
+    await this.incrementMissedCalls(helperId);
+
+    // Tentar próximo helper
+    await this.notifyNextHelperInQueue(helpId, helpType);
+  }
+
+  async acceptHelp(helperId: number, helpId: number): Promise<boolean> {
+    // 1. Obter o tipo de ajuda para construir as chaves do Redis
+    const help = await this.helpRequestService.findOne(helpId);
+    if (!help || help.status !== HelpStatus.PENDING) {
+      console.log(
+        `[acceptHelp] Ajuda ${helpId} não encontrada ou não está mais pendente.`,
+      );
+      return false;
+    }
+    const { help_type: helpType } = help;
+
+    // 2. Validações no Redis
+    const notificationKey = `${this.QUEUE_PREFIX}${helpType}:${helperId}`;
+    const isNotificationActive = await this.redisService.get(notificationKey);
+    if (!isNotificationActive) {
+      console.log(
+        `Helper ${helperId} perdeu o tempo limite para aceitar a ajuda ${helpId}.`,
+      );
+      return false;
+    }
+
+    const pendingHelpKey = this.getPendingHelpKey(helpId);
+    const isHelpGloballyPending = await this.redisService.get(pendingHelpKey);
+    if (!isHelpGloballyPending) {
+      console.log(
+        `Ajuda ${helpId} já não está mais pendente (provavelmente aceita por outro).`,
+      );
+      return false;
+    }
+
+    try {
+      // 3. Delegar atualização do banco de dados para o serviço principal
+      await this.helpRequestService.acceptHelpRequest(helpId, helperId);
+
+      // 4. Limpar chaves do Redis relacionadas à fila
+      await this.redisService.del(notificationKey);
+      await this.redisService.del(pendingHelpKey);
+      await this.resetMissedCalls(helperId);
+
+      console.log(
+        `Helper ${helperId} aceitou a ajuda ${helpId}. Banco de dados e Redis atualizados.`,
+      );
+      return true;
+    } catch (error) {
+      console.error(`Erro ao processar aceitação da ajuda ${helpId}:`, error);
+      return false;
+    }
+  }
+
+  async getAcceptedHelpHelperId(helpId: number): Promise<number | null> {
+    const acceptedHelpKey = this.getAcceptedHelpKey(helpId);
+    const helperId = await this.redisService.get(acceptedHelpKey);
+    return helperId ? parseInt(helperId) : null;
+  }
+
+  async clearAcceptedHelp(helpId: number): Promise<void> {
+    const acceptedHelpKey = this.getAcceptedHelpKey(helpId);
+    await this.redisService.del(acceptedHelpKey);
+  }
+
+  private async cancelHelpRequest(
+    helpId: number,
+    reason: string,
+  ): Promise<void> {
+    const pendingHelpKey = this.getPendingHelpKey(helpId);
+    const cancelledHelpKey = this.getCancelledHelpKey(helpId);
+
+    await this.redisService.del(pendingHelpKey);
+
+    // Marcar como cancelada no Redis para que o sistema principal possa verificar
+    await this.redisService.set(cancelledHelpKey, reason, 'EX', 3600); // 1 hora
+
+    console.log(`Ajuda ${helpId} cancelada no Redis: ${reason}`);
+
+    // Atualizar o banco de dados em tempo real
+    try {
+      await this.helpRequestService.cancelHelpRequest(helpId, reason);
+      console.log(`Ajuda ${helpId} cancelada no banco de dados.`);
+    } catch (error) {
+      console.error(
+        `Erro ao tentar cancelar a ajuda ${helpId} no banco de dados:`,
+        error,
+      );
+    }
+  }
+
+  async getCancelledHelpReason(helpId: number): Promise<string | null> {
+    const cancelledHelpKey = this.getCancelledHelpKey(helpId);
+    return await this.redisService.get(cancelledHelpKey);
+  }
+
   private async incrementMissedCalls(helperId: number): Promise<void> {
     const missedCallsKey = this.getMissedCallsKey(helperId);
     const missedCalls = await this.redisService.incr(missedCallsKey);
 
-    // Se o helper perdeu 2 chamadas, remover de todas as filas
-    if (missedCalls >= 2) {
+    // Se o helper perdeu 3 chamadas, remover de todas as filas
+    if (missedCalls >= 3) {
+      console.log(
+        `Helper ${helperId} perdeu ${missedCalls} chamadas, removendo de todas as filas`,
+      );
       await this.removeFromAllQueues(helperId);
     }
   }
