@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Help } from './entities/help.entity';
 import { User } from '../user/entities/user.entity';
@@ -11,7 +11,7 @@ import { RedisModule } from '../../redis/redis.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Help, User]),
-    HelperModule,
+    forwardRef(() => HelperModule),
     FirebaseModule,
     RedisModule,
   ],
