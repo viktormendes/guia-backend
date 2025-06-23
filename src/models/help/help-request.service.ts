@@ -9,6 +9,8 @@ import { HelpStatus } from './enums/help-status.enum';
 import { FirebaseService } from '../../firebase/firebase.service';
 import { User } from '../user/entities/user.entity';
 import { Role } from '../../common/enums/role.enum';
+import { StudentGateway } from '../student/student.gateway';
+import { HelperGateway } from '../helper/helper.gateway';
 
 @Injectable()
 export class HelpRequestService implements OnModuleInit {
@@ -23,6 +25,8 @@ export class HelpRequestService implements OnModuleInit {
     private readonly helperService: HelperService,
     private readonly redisService: RedisService,
     private readonly firebaseService: FirebaseService,
+    private readonly studentGateway: StudentGateway,
+    private readonly helperGateway: HelperGateway,
   ) {}
 
   async onModuleInit() {
@@ -133,6 +137,14 @@ export class HelpRequestService implements OnModuleInit {
   }
 
   async findOne(helpId: number): Promise<Help | null> {
+    // Validar se helpId é um número válido
+    if (!helpId || isNaN(helpId) || helpId <= 0) {
+      console.warn(
+        `[HELP] Tentativa de buscar ajuda com ID inválido: ${helpId}`,
+      );
+      return null;
+    }
+
     return await this.helpRepository.findOne({
       where: { id: helpId },
       relations: ['student', 'helper'],
@@ -160,6 +172,11 @@ export class HelpRequestService implements OnModuleInit {
     status: HelpStatus,
     helper?: { id: number },
   ): Promise<Help> {
+    // Validar se helpId é um número válido
+    if (!helpId || isNaN(helpId) || helpId <= 0) {
+      throw new Error(`ID de ajuda inválido: ${helpId}`);
+    }
+
     const help = await this.helpRepository.findOne({
       where: { id: helpId },
       relations: ['student', 'helper'],
@@ -191,18 +208,19 @@ export class HelpRequestService implements OnModuleInit {
 
     await this.helpRepository.save(help);
 
-    // Se a ajuda foi concluída ou cancelada, e tinha um helper,
+    // Se a ajuda foi concluída ou cancelada, e tinha um helper em progresso,
     // coloca o helper de volta na fila de disponíveis.
     if (
       wasInProgress &&
       (status === HelpStatus.COMPLETED || status === HelpStatus.CANCELLED) &&
       help.helper
     ) {
-      await this.helperService.setAvailability(
-        help.helper.id,
-        help.help_type,
-        true,
+      console.log(
+        `[HELPER] Retornando helper ${help.helper.id} às filas após finalização da ajuda ${helpId}`,
       );
+
+      // Retornar o helper às filas (disponível novamente)
+      await this.helperService.addToAllQueues(help.helper.id);
     }
 
     // Remover timeout se a solicitação foi finalizada
@@ -338,6 +356,14 @@ export class HelpRequestService implements OnModuleInit {
   }
 
   async acceptHelpRequest(helpId: number, helperId: number): Promise<Help> {
+    // Validar se os IDs são números válidos
+    if (!helpId || isNaN(helpId) || helpId <= 0) {
+      throw new Error(`ID de ajuda inválido: ${helpId}`);
+    }
+    if (!helperId || isNaN(helperId) || helperId <= 0) {
+      throw new Error(`ID de helper inválido: ${helperId}`);
+    }
+
     const help = await this.helpRepository.findOne({
       where: { id: helpId },
       relations: ['student', 'helper'],
@@ -368,11 +394,25 @@ export class HelpRequestService implements OnModuleInit {
 
     await this.helpRepository.save(help);
 
+    // Remover helper de todas as filas (não está mais disponível)
+    await this.helperService.removeFromAllQueues(helperId);
+
     // Remover timeout da solicitação
     const requestKey = this.getRequestKey(helpId);
     await this.redisService.del(requestKey);
 
-    // Notificar estudante
+    // Emitir evento para o estudante via WebSocket
+    if (help.student) {
+      this.studentGateway.sendHelpRequestAccepted(help.student.id, {
+        helpId: help.id,
+        chatId: help.id, // Para chat, o chatId é o mesmo que o helpId
+      });
+    }
+
+    // Emitir evento para remover a solicitação dos helpers
+    this.helperGateway.removeHelpRequest(helperId, help.id);
+
+    // Notificar estudante via FCM
     if (help.student?.fcm_token) {
       try {
         await this.firebaseService.sendNotification({
@@ -395,6 +435,11 @@ export class HelpRequestService implements OnModuleInit {
   }
 
   async cancelHelpRequest(helpId: number, reason: string): Promise<Help> {
+    // Validar se helpId é um número válido
+    if (!helpId || isNaN(helpId) || helpId <= 0) {
+      throw new Error(`ID de ajuda inválido: ${helpId}`);
+    }
+
     const help = await this.helpRepository.findOne({
       where: { id: helpId, status: HelpStatus.PENDING },
       relations: ['student', 'helper'],
@@ -415,7 +460,14 @@ export class HelpRequestService implements OnModuleInit {
     const requestKey = this.getRequestKey(helpId);
     await this.redisService.del(requestKey);
 
-    // Notificar estudante
+    // Emitir evento para o estudante via WebSocket
+    if (help.student) {
+      this.studentGateway.sendHelpRequestRejected(help.student.id, {
+        helpId: help.id,
+      });
+    }
+
+    // Notificar estudante via FCM
     if (help.student?.fcm_token) {
       await this.firebaseService.sendNotification({
         token: help.student.fcm_token,
@@ -437,6 +489,14 @@ export class HelpRequestService implements OnModuleInit {
     userId: number,
     userRole: Role,
   ): Promise<Help> {
+    // Validar se helpId é um número válido
+    if (!helpId || isNaN(helpId) || helpId <= 0) {
+      throw new Error(`ID de ajuda inválido: ${helpId}`);
+    }
+    if (!userId || isNaN(userId) || userId <= 0) {
+      throw new Error(`ID de usuário inválido: ${userId}`);
+    }
+
     const help = await this.findOne(helpId);
 
     if (!help) {

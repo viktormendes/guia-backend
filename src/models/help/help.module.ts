@@ -5,6 +5,7 @@ import { User } from '../user/entities/user.entity';
 import { HelpRequestService } from './help-request.service';
 import { HelpController } from './help.controller';
 import { HelperModule } from '../helper/helper.module';
+import { StudentModule } from '../student/student.module';
 import { FirebaseModule } from '../../firebase/firebase.module';
 import { RedisModule } from '../../redis/redis.module';
 
@@ -12,6 +13,7 @@ import { RedisModule } from '../../redis/redis.module';
   imports: [
     TypeOrmModule.forFeature([Help, User]),
     forwardRef(() => HelperModule),
+    forwardRef(() => StudentModule),
     FirebaseModule,
     RedisModule,
   ],

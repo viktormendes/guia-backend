@@ -239,6 +239,7 @@ export class HelperService implements OnModuleInit {
     }
 
     // Enviar notificação via socket
+    console.log('[SOCKET] Enviando new_help_request para helper:', helper.id);
     this.helperGateway.sendNewHelpRequest(helper.id, {
       helpId,
       tipo: helpType,
@@ -397,17 +398,22 @@ export class HelperService implements OnModuleInit {
     await this.redisService.del(missedCallsKey);
   }
 
-  private async removeFromAllQueues(helperId: number): Promise<void> {
-    const queueKeys = await this.redisService.keys(`${this.QUEUE_PREFIX}*`);
-    const availabilityKey = this.getAvailabilityKey(helperId);
+  // Remover helper de todas as filas (quando aceita uma ajuda)
+  async removeFromAllQueues(helperId: number): Promise<void> {
+    console.log(`[HELPER] Removendo helper ${helperId} de todas as filas`);
 
-    // Remover de todas as filas
-    for (const queueKey of queueKeys) {
-      await this.redisService.lrem(queueKey, 0, helperId.toString());
-    }
+    await this.setAvailability(helperId, HelpType.CHAT, false);
+    await this.setAvailability(helperId, HelpType.VIDEO_CALL, false);
+    await this.setAvailability(helperId, HelpType.DISPATCH, false);
+  }
 
-    // Remover disponibilidade
-    await this.redisService.del(availabilityKey);
+  // Adicionar helper a todas as filas (quando finaliza uma ajuda)
+  async addToAllQueues(helperId: number): Promise<void> {
+    console.log(`[HELPER] Adicionando helper ${helperId} a todas as filas`);
+
+    await this.setAvailability(helperId, HelpType.CHAT, true);
+    await this.setAvailability(helperId, HelpType.VIDEO_CALL, true);
+    await this.setAvailability(helperId, HelpType.DISPATCH, true);
   }
 
   async isHelperAvailable(
