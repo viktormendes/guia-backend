@@ -74,7 +74,7 @@ export class StudentGateway
   // Emitir evento quando ajuda for aceita
   sendHelpRequestAccepted(
     studentId: number,
-    payload: { helpId: number; chatId: number },
+    payload: { helpId: number; chatId: number; helpType: string },
   ) {
     console.log(
       `[SOCKET] Emitindo evento 'help_request_accepted' para studentId=${studentId}, sala=student_${studentId}, payload=`,
