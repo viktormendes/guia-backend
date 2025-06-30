@@ -14,6 +14,7 @@ import { HelpModule } from './models/help/help.module';
 import { ChatModule } from './models/chat/chat.module';
 import { RedisModule } from './redis/redis.module';
 import { HelperModule } from './models/helper/helper.module';
+import { DispatchModule } from './models/dispatch/dispatch.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { HelperModule } from './models/helper/helper.module';
     ChatModule,
     RedisModule,
     HelperModule,
+    DispatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
