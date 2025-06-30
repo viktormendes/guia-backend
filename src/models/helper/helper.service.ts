@@ -231,10 +231,7 @@ export class HelperService implements OnModuleInit {
         });
         console.log(`Notificação FCM enviada para helper ${helper.id}`);
       } catch (error) {
-        console.error(
-          `Erro ao enviar notificação FCM para helper ${helper.id}:`,
-          error,
-        );
+        console.error('Erro ao enviar notificação:', error);
       }
     }
 
@@ -410,10 +407,43 @@ export class HelperService implements OnModuleInit {
   // Adicionar helper a todas as filas (quando finaliza uma ajuda)
   async addToAllQueues(helperId: number): Promise<void> {
     console.log(`[HELPER] Adicionando helper ${helperId} a todas as filas`);
-
     await this.setAvailability(helperId, HelpType.CHAT, true);
     await this.setAvailability(helperId, HelpType.VIDEO_CALL, true);
     await this.setAvailability(helperId, HelpType.DISPATCH, true);
+  }
+
+  async restoreOriginalQueues(
+    helperId: number,
+    originalQueues: Record<HelpType, boolean>,
+  ): Promise<void> {
+    console.log(
+      `[HELPER] Restaurando filas originais para helper ${helperId}:`,
+      originalQueues,
+    );
+
+    // Restaurar apenas as filas que o helper estava antes
+    for (const [helpType, wasAvailable] of Object.entries(originalQueues)) {
+      console.log(
+        `[DEBUG] Verificando ${helpType}: wasAvailable = ${wasAvailable}`,
+      );
+      if (wasAvailable) {
+        console.log(
+          `[DEBUG] Adicionando helper ${helperId} à fila ${helpType}`,
+        );
+        await this.setAvailability(helperId, helpType as HelpType, true);
+      } else {
+        console.log(
+          `[DEBUG] Helper ${helperId} NÃO estava na fila ${helpType}, não adicionando`,
+        );
+      }
+    }
+
+    // Verificar o estado final
+    const finalAvailability = await this.getAvailability(helperId);
+    console.log(
+      `[DEBUG] Estado final das filas do helper ${helperId}:`,
+      finalAvailability,
+    );
   }
 
   async isHelperAvailable(
