@@ -15,6 +15,7 @@ import { ChatModule } from './models/chat/chat.module';
 import { RedisModule } from './redis/redis.module';
 import { HelperModule } from './models/helper/helper.module';
 import { DispatchModule } from './models/dispatch/dispatch.module';
+import { VideoCallModule } from './models/video-call/video-call.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DispatchModule } from './models/dispatch/dispatch.module';
     RedisModule,
     HelperModule,
     DispatchModule,
+    VideoCallModule,
   ],
   controllers: [AppController],
   providers: [AppService],
