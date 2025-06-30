@@ -216,11 +216,43 @@ export class HelpRequestService implements OnModuleInit {
       help.helper
     ) {
       console.log(
-        `[HELPER] Retornando helper ${help.helper.id} às filas após finalização da ajuda ${helpId}`,
+        `[HELPER] Retornando helper ${help.helper.id} às filas originais após finalização da ajuda ${helpId}`,
       );
 
-      // Retornar o helper às filas (disponível novamente)
-      await this.helperService.addToAllQueues(help.helper.id);
+      // Buscar as filas originais do helper no log da ajuda
+      const acceptLog = help.log?.find(
+        (log) => log.action === 'accepted_by_helper',
+      );
+      const logDetails = acceptLog?.details as
+        | { originalQueues?: Record<string, boolean> }
+        | undefined;
+      const originalQueues = logDetails?.originalQueues;
+
+      console.log(`[DEBUG] Log de aceitação encontrado:`, acceptLog);
+      console.log(`[DEBUG] Detalhes do log:`, logDetails);
+      console.log(`[DEBUG] Filas originais:`, originalQueues);
+      console.log(`[DEBUG] Log completo da ajuda:`, help.log);
+
+      if (originalQueues) {
+        // Restaurar apenas as filas originais
+        console.log(
+          `[HELPER] Restaurando filas originais para helper ${help.helper.id}:`,
+          originalQueues,
+        );
+        await this.helperService.restoreOriginalQueues(
+          help.helper.id,
+          originalQueues,
+        );
+      } else {
+        // Fallback: se não encontrar as filas originais, adicionar a todas as filas
+        console.warn(
+          `[HELPER] Filas originais não encontradas para helper ${help.helper.id}, adicionando a todas as filas`,
+        );
+        console.warn(
+          `[DEBUG] Isso não deveria acontecer! Verifique os logs acima.`,
+        );
+        await this.helperService.addToAllQueues(help.helper.id);
+      }
     }
 
     // Remover timeout se a solicitação foi finalizada
@@ -249,16 +281,20 @@ export class HelpRequestService implements OnModuleInit {
           break;
       }
 
-      await this.firebaseService.sendNotification({
-        token: help.student.fcm_token,
-        title,
-        body,
-        data: {
-          helpId: help.id.toString(),
-          helpType: help.help_type,
-          action: `help_${status.toLowerCase()}`,
-        },
-      });
+      try {
+        await this.firebaseService.sendNotification({
+          token: help.student.fcm_token,
+          title,
+          body,
+          data: {
+            helpId: help.id.toString(),
+            helpType: help.help_type,
+            action: `help_${status.toLowerCase()}`,
+          },
+        });
+      } catch (error) {
+        console.error('Erro ao enviar notificação:', error);
+      }
     }
 
     return help;
@@ -385,12 +421,24 @@ export class HelpRequestService implements OnModuleInit {
       throw new Error('Helper não encontrado');
     }
 
+    // Salvar as filas originais do helper antes de removê-lo
+    const originalQueues = await this.helperService.getAvailability(helperId);
+    console.log(
+      `[DEBUG] Filas originais do helper ${helperId} antes de aceitar:`,
+      originalQueues,
+    );
+
     // Atualizar status e atribuir ajudante
     help.status = HelpStatus.IN_PROGRESS;
     help.helper = helper;
     help.startedAt = new Date();
 
-    this.addLog(help, 'accepted_by_helper', { helperId: helper.id });
+    // Salvar as filas originais no log da ajuda
+    this.addLog(help, 'accepted_by_helper', {
+      helperId: helper.id,
+      originalQueues: originalQueues,
+    });
+    console.log(`[DEBUG] Log salvo com filas originais:`, help.log);
 
     await this.helpRepository.save(help);
 
@@ -406,6 +454,7 @@ export class HelpRequestService implements OnModuleInit {
       this.studentGateway.sendHelpRequestAccepted(help.student.id, {
         helpId: help.id,
         chatId: help.id, // Para chat, o chatId é o mesmo que o helpId
+        helpType: help.help_type,
       });
     }
 
@@ -427,7 +476,7 @@ export class HelpRequestService implements OnModuleInit {
           },
         });
       } catch (error) {
-        console.error('Erro ao notificar estudante:', error);
+        console.error('Erro ao enviar notificação:', error);
       }
     }
 
@@ -441,12 +490,26 @@ export class HelpRequestService implements OnModuleInit {
     }
 
     const help = await this.helpRepository.findOne({
-      where: { id: helpId, status: HelpStatus.PENDING },
+      where: { id: helpId },
       relations: ['student', 'helper'],
     });
 
     if (!help) {
-      throw new Error('Solicitação não encontrada ou já finalizada');
+      throw new Error('Solicitação não encontrada');
+    }
+
+    // Se a ajuda já foi aceita (IN_PROGRESS), usar updateStatus para garantir
+    // que o helper seja retornado às filas originais
+    if (help.status === HelpStatus.IN_PROGRESS) {
+      console.log(
+        `[HELP] Cancelando ajuda ${helpId} que já foi aceita por helper ${help.helper?.id}`,
+      );
+      return await this.updateStatus(helpId, HelpStatus.CANCELLED);
+    }
+
+    // Se a ajuda ainda está pendente, cancelar normalmente
+    if (help.status !== HelpStatus.PENDING) {
+      throw new Error('Esta solicitação já foi finalizada');
     }
 
     help.status = HelpStatus.CANCELLED;
@@ -469,16 +532,20 @@ export class HelpRequestService implements OnModuleInit {
 
     // Notificar estudante via FCM
     if (help.student?.fcm_token) {
-      await this.firebaseService.sendNotification({
-        token: help.student.fcm_token,
-        title: 'Solicitação cancelada',
-        body: reason,
-        data: {
-          helpId: help.id.toString(),
-          helpType: help.help_type,
-          action: 'help_cancelled',
-        },
-      });
+      try {
+        await this.firebaseService.sendNotification({
+          token: help.student.fcm_token,
+          title: 'Solicitação cancelada',
+          body: reason,
+          data: {
+            helpId: help.id.toString(),
+            helpType: help.help_type,
+            action: 'help_cancelled',
+          },
+        });
+      } catch (error) {
+        console.error('Erro ao enviar notificação:', error);
+      }
     }
 
     return help;
