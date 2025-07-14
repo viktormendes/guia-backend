@@ -9,6 +9,10 @@ import { UpdateDisciplineDto } from './dto/update-discipline.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Discipline } from './entities/discipline.entity';
+import {
+  planCurriculum,
+  Discipline as SimDiscipline,
+} from './utils/curriculum-simulator';
 
 @Injectable()
 export class DisciplineService {
@@ -144,5 +148,9 @@ export class DisciplineService {
       statusCode: 200,
       message: 'Disciplina removida com sucesso',
     };
+  }
+
+  simulateCurriculum(disciplines: SimDiscipline[], options?: any): any {
+    return planCurriculum(disciplines, options);
   }
 }
