@@ -16,6 +16,7 @@ import { RedisModule } from './redis/redis.module';
 import { HelperModule } from './models/helper/helper.module';
 import { DispatchModule } from './models/dispatch/dispatch.module';
 import { VideoCallModule } from './models/video-call/video-call.module';
+import { SpecialNeedModule } from './models/special-need/special-need.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { VideoCallModule } from './models/video-call/video-call.module';
     HelperModule,
     DispatchModule,
     VideoCallModule,
+    SpecialNeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],
