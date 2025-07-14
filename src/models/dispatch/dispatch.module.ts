@@ -14,9 +14,14 @@ import { HelperGateway } from '../helper/helper.gateway';
 import { User } from '../user/entities/user.entity';
 import { Help } from '../help/entities/help.entity';
 import { UserModule } from '../user/user.module';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserLocation, User, Help]), UserModule],
+  imports: [
+    TypeOrmModule.forFeature([UserLocation, User, Help]),
+    UserModule,
+    CommonModule,
+  ],
   controllers: [DispatchController],
   providers: [
     DispatchService,

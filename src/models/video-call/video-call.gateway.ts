@@ -49,15 +49,15 @@ export class VideoCallGateway
   private clientRoom = new Map<string, string>();
 
   handleConnection(client: Socket) {
-    console.log(`[BACKEND] Cliente conectado: ${client.id}`);
+    console.log(`[VideoCall] Cliente conectado: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
+    console.log(`[VideoCall] Cliente desconectado: ${client.id}`);
     const helpId = this.clientRoom.get(client.id);
     if (helpId) {
       this.leaveRoom(client, helpId);
     }
-    console.log(`[BACKEND] Cliente desconectado: ${client.id}`);
   }
 
   @SubscribeMessage('join-room')
@@ -66,16 +66,17 @@ export class VideoCallGateway
     @MessageBody() payload: JoinRoomPayload,
   ) {
     const { helpId, userId } = payload;
+    console.log(
+      `[VideoCall] join-room: client=${client.id}, userId=${userId}, helpId=${helpId}`,
+    );
     let room = this.rooms.get(helpId);
     if (!room) {
       room = new Set();
       this.rooms.set(helpId, room);
     }
     if (room.size >= 2) {
+      console.warn(`[VideoCall] Sala cheia para helpId=${helpId}`);
       client.emit('room-full', { helpId });
-      console.log(
-        `[BACKEND] Sala cheia (${helpId}), cliente ${client.id} recusado.`,
-      );
       return { success: false, message: 'Sala cheia' };
     }
     room.add(client.id);
@@ -83,12 +84,13 @@ export class VideoCallGateway
     client.join(helpId);
     client.emit('joined-room', { helpId });
     console.log(
-      `[BACKEND] Cliente ${client.id} (userId: ${userId}) entrou na sala ${helpId}. Total na sala: ${room.size}`,
+      `[VideoCall] Cliente ${client.id} entrou na sala ${helpId}. Total na sala: ${room.size}`,
     );
-    // Notificar o outro participante que alguém entrou (se já houver)
     if (room.size === 2) {
-      client.to(helpId).emit('peer-joined', { helpId });
-      console.log(`[BACKEND] peer-joined emitido para sala ${helpId}`);
+      console.log(
+        `[VideoCall] Notificando peer-joined para helpId=${helpId} (para ambos)`,
+      );
+      this.server.to(helpId).emit('peer-joined', { helpId });
     }
     return { success: true };
   }
@@ -99,8 +101,10 @@ export class VideoCallGateway
     @MessageBody() payload: OfferPayload,
   ) {
     const { helpId, sdp } = payload;
+    console.log(
+      `[VideoCall] offer: client=${client.id}, helpId=${helpId}, sdp=${!!sdp}`,
+    );
     client.to(helpId).emit('offer', { helpId, sdp });
-    console.log(`[BACKEND] Offer recebida de ${client.id} para sala ${helpId}`);
   }
 
   @SubscribeMessage('answer')
@@ -109,10 +113,10 @@ export class VideoCallGateway
     @MessageBody() payload: AnswerPayload,
   ) {
     const { helpId, sdp } = payload;
-    client.to(helpId).emit('answer', { helpId, sdp });
     console.log(
-      `[BACKEND] Answer recebida de ${client.id} para sala ${helpId}`,
+      `[VideoCall] answer: client=${client.id}, helpId=${helpId}, sdp=${!!sdp}`,
     );
+    client.to(helpId).emit('answer', { helpId, sdp });
   }
 
   @SubscribeMessage('ice-candidate')
@@ -121,8 +125,10 @@ export class VideoCallGateway
     @MessageBody() payload: IceCandidatePayload,
   ) {
     const { helpId, candidate } = payload;
+    console.log(
+      `[VideoCall] ice-candidate: client=${client.id}, helpId=${helpId}, candidate=${!!candidate}`,
+    );
     client.to(helpId).emit('ice-candidate', { helpId, candidate });
-    console.log(`[BACKEND] ICE candidate de ${client.id} para sala ${helpId}`);
   }
 
   @SubscribeMessage('leave-room')
@@ -130,24 +136,32 @@ export class VideoCallGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { helpId: string },
   ) {
-    this.leaveRoom(client, payload.helpId);
     console.log(
-      `[BACKEND] Cliente ${client.id} saiu da sala ${payload.helpId}`,
+      `[VideoCall] leave-room: client=${client.id}, helpId=${payload.helpId}`,
     );
+    this.leaveRoom(client, payload.helpId);
+  }
+
+  public endCall(helpId: string) {
+    console.log(`[VideoCall] call-ended emitido para helpId=${helpId}`);
+    this.server.to(helpId).emit('call-ended', { helpId });
   }
 
   private leaveRoom(client: Socket, helpId: string) {
     const room = this.rooms.get(helpId);
     if (room) {
       room.delete(client.id);
+      console.log(
+        `[VideoCall] Cliente ${client.id} saiu da sala ${helpId}. Restantes: ${room.size}`,
+      );
       if (room.size === 0) {
         this.rooms.delete(helpId);
+        console.log(`[VideoCall] Sala ${helpId} removida (vazia)`);
       }
     }
     this.clientRoom.delete(client.id);
     client.leave(helpId);
-    // Notificar o outro participante
     client.to(helpId).emit('peer-left', { helpId });
-    console.log(`[BACKEND] peer-left emitido para sala ${helpId}`);
+    console.log(`[VideoCall] peer-left emitido para helpId=${helpId}`);
   }
 }
