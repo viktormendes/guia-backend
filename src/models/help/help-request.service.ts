@@ -131,7 +131,16 @@ export class HelpRequestService implements OnModuleInit {
 
   async findAll(): Promise<Help[]> {
     return await this.helpRepository.find({
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -147,14 +156,32 @@ export class HelpRequestService implements OnModuleInit {
 
     return await this.helpRepository.findOne({
       where: { id: helpId },
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
     });
   }
 
   async findHelpsByStudent(studentId: number): Promise<Help[]> {
     return await this.helpRepository.find({
       where: { student: { id: studentId } },
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
       order: { createdAt: 'DESC' },
     });
   }
@@ -581,5 +608,28 @@ export class HelpRequestService implements OnModuleInit {
     }
 
     return this.updateStatus(helpId, HelpStatus.COMPLETED);
+  }
+
+  async countByHelper(helperId: number): Promise<number> {
+    return await this.helpRepository.count({
+      where: { helper: { id: helperId } },
+    });
+  }
+
+  async countByHelperAndType(
+    helperId: number,
+    helpType: HelpType,
+  ): Promise<number> {
+    return await this.helpRepository.count({
+      where: { helper: { id: helperId }, help_type: helpType },
+    });
+  }
+
+  createHelperHelpsQueryBuilder(helperId: number) {
+    return this.helpRepository
+      .createQueryBuilder('help')
+      .leftJoinAndSelect('help.student', 'student')
+      .where('help.helper.id = :helperId', { helperId })
+      .orderBy('help.createdAt', 'DESC');
   }
 }

@@ -19,11 +19,15 @@ import { Role } from 'src/common/enums/role.enum';
 import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth/jwt-auth.guard';
 import { AcceptHelpDto } from './dto/accept-help.dto';
 import { CompleteHelpDto } from './dto/complete-help.dto';
+import { HelpService } from './help.service';
 
 @Controller('help')
 @UseGuards(JwtAuthGuard)
 export class HelpController {
-  constructor(private readonly helpRequestService: HelpRequestService) {}
+  constructor(
+    private readonly helpRequestService: HelpRequestService,
+    private readonly helpService: HelpService,
+  ) {}
 
   @Post()
   create(@Body() createHelpDto: CreateHelpDto, @Request() req) {

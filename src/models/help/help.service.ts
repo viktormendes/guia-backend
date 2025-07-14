@@ -31,7 +31,16 @@ export class HelpService {
 
   async findAll(): Promise<Help[]> {
     return this.helpRepository.find({
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
       order: {
         createdAt: 'DESC',
       },
@@ -41,7 +50,16 @@ export class HelpService {
   async findOne(id: number): Promise<Help | null> {
     return this.helpRepository.findOne({
       where: { id },
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
     });
   }
 
@@ -86,7 +104,16 @@ export class HelpService {
   async findHelpsByStudent(studentId: number): Promise<Help[]> {
     return this.helpRepository.find({
       where: { student: { id: studentId } },
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
       order: {
         createdAt: 'DESC',
       },
@@ -96,7 +123,16 @@ export class HelpService {
   async findHelpsByHelper(helperId: number): Promise<Help[]> {
     return this.helpRepository.find({
       where: { helper: { id: helperId } },
-      relations: ['student', 'helper'],
+      relations: [
+        'student',
+        'student.studentProfile',
+        'student.studentProfile.specialNeed',
+        'student.studentProfile.specialNeedSubcategory',
+        'helper',
+        'helper.studentProfile',
+        'helper.studentProfile.specialNeed',
+        'helper.studentProfile.specialNeedSubcategory',
+      ],
       order: {
         createdAt: 'DESC',
       },

@@ -8,6 +8,9 @@ import { HelperModule } from '../helper/helper.module';
 import { StudentModule } from '../student/student.module';
 import { FirebaseModule } from '../../firebase/firebase.module';
 import { RedisModule } from '../../redis/redis.module';
+import { HelpService } from './help.service';
+import { HelpAnalyticsController } from './help-analytics.controller';
+import { HelpAnalyticsService } from './help-analytics.service';
 
 @Module({
   imports: [
@@ -17,8 +20,8 @@ import { RedisModule } from '../../redis/redis.module';
     FirebaseModule,
     RedisModule,
   ],
-  controllers: [HelpController],
-  providers: [HelpRequestService],
-  exports: [HelpRequestService],
+  controllers: [HelpController, HelpAnalyticsController],
+  providers: [HelpRequestService, HelpService, HelpAnalyticsService],
+  exports: [HelpRequestService, HelpService, HelpAnalyticsService],
 })
 export class HelpModule {}
