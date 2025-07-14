@@ -8,10 +8,13 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  OneToOne,
 } from 'typeorm';
 
 import * as bcrypt from 'bcrypt';
 import { Role } from 'src/common/enums/role.enum';
+import { Occupation } from 'src/common/enums/occupation.enum';
+import { StudentProfile } from '../../student/entities/student-profile.entity';
 
 @Entity('user')
 export class User {
@@ -43,6 +46,13 @@ export class User {
   })
   role: Role;
 
+  @Column({
+    type: 'enum',
+    enum: Occupation,
+    nullable: true,
+  })
+  occupation: Occupation;
+
   @Column({ type: 'text', nullable: true })
   hashedRefreshToken: string | null;
 
@@ -51,6 +61,9 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToOne(() => StudentProfile, (studentProfile) => studentProfile.user)
+  studentProfile: StudentProfile;
 
   @BeforeInsert()
   async hashPassword() {

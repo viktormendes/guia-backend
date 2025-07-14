@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/await-thenable */
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,6 +26,13 @@ export class UserService {
   }
 
   async create(createUserDto: CreateUserDto) {
+    const hasEmail = await this.UserRepo.find({
+      where: { email: createUserDto.email },
+    });
+
+    if (hasEmail) {
+      throw new BadRequestException('Email em uso');
+    }
     const user = await this.UserRepo.create(createUserDto);
     return await this.UserRepo.save(user);
   }
@@ -62,7 +69,7 @@ export class UserService {
     await this.UserRepo.update(id, updateUserDto);
     return this.findOne(id);
   }
-  
+
   async remove(id: number) {
     const user = await this.UserRepo.findOne({ where: { id } });
     if (!user) {
