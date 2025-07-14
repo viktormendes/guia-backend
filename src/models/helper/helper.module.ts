@@ -9,6 +9,7 @@ import { FirebaseModule } from '../../firebase/firebase.module';
 import { HelpModule } from '../help/help.module';
 import { HelperGateway } from './helper.gateway';
 import { UserModule } from '../user/user.module';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UserModule } from '../user/user.module';
     FirebaseModule,
     forwardRef(() => HelpModule),
     UserModule,
+    CommonModule,
   ],
   providers: [HelperService, HelperGateway],
   controllers: [HelperController],

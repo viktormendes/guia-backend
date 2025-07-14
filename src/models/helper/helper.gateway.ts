@@ -38,7 +38,7 @@ export class HelperGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       const user = await this.userService.validateToken(token);
-      if (!user || user.role !== Role.HELPER) {
+      if (!user) {
         console.log(
           '[SOCKET] Token inválido ou usuário não é helper, desconectando',
         );

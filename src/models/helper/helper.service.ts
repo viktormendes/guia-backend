@@ -1,4 +1,10 @@
-import { Injectable, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from '../user/entities/user.entity';
@@ -8,6 +14,18 @@ import { FirebaseService } from '../../firebase/firebase.service';
 import { HelpRequestService } from '../help/help-request.service';
 import { HelpStatus } from '../help/enums/help-status.enum';
 import { HelperGateway } from './helper.gateway';
+import { PaginationService } from '../../common/services/pagination.service';
+import { QueryBuilderService } from '../../common/services/query-builder.service';
+import { PaginationDto, PaginatedResponseDto } from './dto/pagination.dto';
+import { HelperListDto } from './dto/helper-list.dto';
+import { Role } from '../../common/enums/role.enum';
+import {
+  HelperDetailsDto,
+  HelperHelpDto,
+  HelperStatsDto,
+} from './dto/helper-details.dto';
+import { SortOrder } from './dto/pagination.dto';
+import { CreateHelperDto } from './dto/create-helper.dto';
 
 @Injectable()
 export class HelperService implements OnModuleInit {
@@ -27,6 +45,8 @@ export class HelperService implements OnModuleInit {
     @Inject(forwardRef(() => HelpRequestService))
     private readonly helpRequestService: HelpRequestService,
     private readonly helperGateway: HelperGateway,
+    private readonly paginationService: PaginationService,
+    private readonly queryBuilderService: QueryBuilderService,
   ) {}
 
   async onModuleInit() {
@@ -453,5 +473,273 @@ export class HelperService implements OnModuleInit {
     const availabilityKey = this.getAvailabilityKey(helperId);
     const isAvailable = await this.redisService.hget(availabilityKey, helpType);
     return isAvailable === '1';
+  }
+
+  async getAllHelpers(
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResponseDto<HelperListDto>> {
+    const { search, occupation, sortBy, sortOrder, ...paginationParams } =
+      paginationDto;
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.studentProfile', 'profile')
+      .leftJoinAndSelect('profile.specialNeedSubcategories', 'subcategories')
+      .leftJoinAndSelect('subcategories.specialNeed', 'specialNeed')
+      .where('user.role IN (:...roles)', {
+        roles: [Role.HELPER, Role.ADMIN],
+      });
+
+    // Apply search, filters and sorting
+    this.queryBuilderService.applySearchFiltersAndSorting(
+      queryBuilder,
+      search,
+      { occupation },
+      sortBy,
+      sortOrder,
+      {
+        searchFields: ['firstName', 'lastName', 'email'],
+        filterFields: { occupation: 'occupation' },
+        sortableFields: [
+          'firstName',
+          'lastName',
+          'email',
+          'createdAt',
+          'updatedAt',
+        ],
+        defaultSort: { field: 'createdAt', order: SortOrder.DESC },
+      },
+    );
+
+    const paginatedResult = await this.paginationService.paginate(
+      queryBuilder,
+      paginationParams,
+    );
+
+    // Transform data to include availability and student profile
+    const helpersWithAvailability = await Promise.all(
+      paginatedResult.data.map(async (user) => {
+        const availability = await this.getAvailability(user.id);
+        return {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          role: user.role,
+          occupation: user.occupation,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          availability: {
+            chat: availability[HelpType.CHAT],
+            videoCall: availability[HelpType.VIDEO_CALL],
+            presential: availability[HelpType.DISPATCH],
+          },
+          // Dados do perfil do estudante (quando aplicável)
+          phoneNumber: user.studentProfile?.phoneNumber,
+          cpf: user.studentProfile?.cpf,
+          rg: user.studentProfile?.rg,
+          gender: user.studentProfile?.gender,
+          maritalStatus: user.studentProfile?.maritalStatus,
+          birthDate: user.studentProfile?.birthDate,
+          course: user.studentProfile?.course,
+          enrollmentDate: user.studentProfile?.enrollmentDate,
+          cep: user.studentProfile?.cep,
+          state: user.studentProfile?.state,
+          city: user.studentProfile?.city,
+          neighborhood: user.studentProfile?.neighborhood,
+          street: user.studentProfile?.street,
+          number: user.studentProfile?.number,
+          complement: user.studentProfile?.complement,
+          specialNeeds:
+            user.studentProfile?.specialNeedSubcategories?.map((sub) => ({
+              specialNeedId: sub.specialNeed?.id,
+              specialNeedName: sub.specialNeed?.name,
+              specialNeedSubcategoryId: sub.id,
+              specialNeedSubcategoryName: sub.name,
+            })) ?? [],
+          needDuration: user.studentProfile?.needDuration,
+          observations: user.studentProfile?.observations,
+          supportNotes: user.studentProfile?.supportNotes,
+          isStudent: user.studentProfile?.isStudent ?? false,
+        } as HelperListDto;
+      }),
+    );
+
+    return {
+      data: helpersWithAvailability,
+      pagination: paginatedResult.pagination,
+    };
+  }
+
+  async getHelperDetails(
+    helperId: number,
+    paginationDto: PaginationDto,
+  ): Promise<{
+    helper: HelperDetailsDto;
+    helps: PaginatedResponseDto<HelperHelpDto>;
+  }> {
+    // Buscar dados do helper com perfil do estudante
+    const helper = await this.userRepository.findOne({
+      where: { id: helperId },
+      relations: [
+        'studentProfile',
+        'studentProfile.specialNeedSubcategories',
+        'studentProfile.specialNeedSubcategories.specialNeed',
+      ],
+    });
+
+    if (!helper) {
+      throw new NotFoundException('Helper não encontrado');
+    }
+
+    // Buscar disponibilidade
+    const availability = await this.getAvailability(helperId);
+
+    // Buscar estatísticas
+    const [totalRequests, chatCount, videoCount, presentialCount] =
+      await Promise.all([
+        this.helpRequestService.countByHelper(helperId),
+        this.helpRequestService.countByHelperAndType(helperId, HelpType.CHAT),
+        this.helpRequestService.countByHelperAndType(
+          helperId,
+          HelpType.VIDEO_CALL,
+        ),
+        this.helpRequestService.countByHelperAndType(
+          helperId,
+          HelpType.DISPATCH,
+        ),
+      ]);
+
+    const stats: HelperStatsDto = {
+      totalRequests,
+      byType: {
+        chat: chatCount,
+        videoCall: videoCount,
+        presential: presentialCount,
+      },
+    };
+
+    // Buscar ajudas paginadas
+    const { sortBy, sortOrder, ...paginationParams } = paginationDto;
+    const helpsQueryBuilder =
+      this.helpRequestService.createHelperHelpsQueryBuilder(helperId);
+
+    // Aplicar ordenação nas ajudas
+    this.queryBuilderService.applySorting(
+      helpsQueryBuilder,
+      sortBy,
+      sortOrder,
+      {
+        sortableFields: ['createdAt', 'status', 'help_type'],
+        defaultSort: { field: 'createdAt', order: SortOrder.DESC },
+      },
+    );
+
+    const paginatedHelps = await this.paginationService.paginate(
+      helpsQueryBuilder,
+      paginationParams,
+    );
+
+    // Transformar dados das ajudas
+    const helps = paginatedHelps.data.map((help) => ({
+      id: help.id,
+      studentName: `${help.student.firstName} ${help.student.lastName}`,
+      helpType: help.help_type,
+      time: help.createdAt.toTimeString().slice(0, 5), // formato hh:mm
+      status: help.status,
+      createdAt: help.createdAt,
+    })) as HelperHelpDto[];
+
+    const helperDetails: HelperDetailsDto = {
+      id: helper.id,
+      firstName: helper.firstName,
+      lastName: helper.lastName,
+      email: helper.email,
+      avatarUrl: helper.avatarUrl,
+      role: helper.role,
+      occupation: helper.occupation,
+      createdAt: helper.createdAt,
+      updatedAt: helper.updatedAt,
+      availability: {
+        chat: availability[HelpType.CHAT],
+        videoCall: availability[HelpType.VIDEO_CALL],
+        presential: availability[HelpType.DISPATCH],
+      },
+      stats,
+
+      // Dados do perfil do estudante (quando aplicável)
+      phoneNumber: helper.studentProfile?.phoneNumber,
+      cpf: helper.studentProfile?.cpf,
+      rg: helper.studentProfile?.rg,
+      gender: helper.studentProfile?.gender,
+      maritalStatus: helper.studentProfile?.maritalStatus,
+      birthDate: helper.studentProfile?.birthDate,
+      course: helper.studentProfile?.course,
+      enrollmentDate: helper.studentProfile?.enrollmentDate,
+
+      // Endereço
+      cep: helper.studentProfile?.cep,
+      state: helper.studentProfile?.state,
+      city: helper.studentProfile?.city,
+      neighborhood: helper.studentProfile?.neighborhood,
+      street: helper.studentProfile?.street,
+      number: helper.studentProfile?.number,
+      complement: helper.studentProfile?.complement,
+
+      // Necessidades especiais
+      specialNeeds:
+        helper.studentProfile?.specialNeedSubcategories?.map((sub) => ({
+          specialNeedId: sub.specialNeed?.id,
+          specialNeedName: sub.specialNeed?.name,
+          specialNeedSubcategoryId: sub.id,
+          specialNeedSubcategoryName: sub.name,
+        })) ?? [],
+
+      // Dados de controle
+      observations: helper.studentProfile?.observations,
+      supportNotes: helper.studentProfile?.supportNotes,
+      isStudent: helper.studentProfile?.isStudent ?? false,
+    };
+
+    return {
+      helper: helperDetails,
+      helps: {
+        data: helps,
+        pagination: paginatedHelps.pagination,
+      },
+    };
+  }
+
+  async createHelper(dto: CreateHelperDto): Promise<HelperListDto> {
+    // Verifica se já existe usuário com o mesmo email
+    const exists = await this.userRepository.findOne({
+      where: { email: dto.email },
+    });
+    if (exists) {
+      throw new Error('Já existe um usuário com este email');
+    }
+    const user = this.userRepository.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      password: dto.password,
+      avatarUrl: dto.avatarUrl,
+      occupation: dto.occupation,
+      role: Role.HELPER,
+    });
+    const saved = await this.userRepository.save(user);
+    // Retorna apenas os campos do HelperListDto
+    return {
+      id: saved.id,
+      firstName: saved.firstName,
+      lastName: saved.lastName,
+      email: saved.email,
+      avatarUrl: saved.avatarUrl,
+      role: saved.role,
+      occupation: saved.occupation,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
+    };
   }
 }

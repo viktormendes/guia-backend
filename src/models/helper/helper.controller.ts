@@ -8,6 +8,7 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { Role } from '../../common/enums/role.enum';
 import { HelperService } from './helper.service';
@@ -17,6 +18,11 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { SetAvailabilityDto } from './dto/set-availability.dto';
 import { GetAvailabilityDto } from './dto/get-availability.dto';
 import { AcceptHelpDto } from './dto/accept-help.dto';
+import { PaginationDto } from './dto/pagination.dto';
+import { PaginatedResponseDto } from './dto/pagination.dto';
+import { HelperListDto } from './dto/helper-list.dto';
+import { HelperDetailsDto, HelperHelpDto } from './dto/helper-details.dto';
+import { CreateHelperDto } from './dto/create-helper.dto';
 
 @Controller('helper')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -91,5 +97,31 @@ export class HelperController {
     return {
       cancelled: false,
     };
+  }
+
+  @Get('list')
+  @Roles(Role.EDITOR)
+  async getAllHelpers(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginatedResponseDto<HelperListDto>> {
+    return await this.helperService.getAllHelpers(paginationDto);
+  }
+
+  @Get('list/:id')
+  @Roles(Role.EDITOR)
+  async getHelperDetails(
+    @Param('id') id: number,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<{
+    helper: HelperDetailsDto;
+    helps: PaginatedResponseDto<HelperHelpDto>;
+  }> {
+    return await this.helperService.getHelperDetails(id, paginationDto);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN, Role.EDITOR)
+  async createHelper(@Body() createHelperDto: CreateHelperDto) {
+    return await this.helperService.createHelper(createHelperDto);
   }
 }

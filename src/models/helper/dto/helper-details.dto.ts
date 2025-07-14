@@ -1,0 +1,75 @@
+import { Occupation } from '../../../common/enums/occupation.enum';
+import { HelpType } from '../../help/enums/help-type.enum';
+import { HelpStatus } from '../../help/enums/help-status.enum';
+import { Gender } from '../../../common/enums/gender.enum';
+import { MaritalStatus } from '../../../common/enums/marital-status.enum';
+import { NeedDuration } from '../../../common/enums/need-duration.enum';
+
+export class HelperHelpDto {
+  id: number;
+  studentName: string;
+  helpType: HelpType;
+  time: string; // formato hh:mm
+  status: HelpStatus;
+  createdAt: Date;
+}
+
+export class HelperStatsDto {
+  totalRequests: number;
+  byType: {
+    chat: number;
+    videoCall: number;
+    presential: number;
+  };
+}
+
+export class HelperDetailsDto {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  role: string;
+  occupation?: Occupation;
+  createdAt: Date;
+  updatedAt: Date;
+  availability?: {
+    chat: boolean;
+    videoCall: boolean;
+    presential: boolean;
+  };
+  stats: HelperStatsDto;
+
+  // Dados do perfil do estudante (quando aplicável)
+  phoneNumber?: string;
+  cpf?: string;
+  rg?: string;
+  gender?: Gender;
+  maritalStatus?: MaritalStatus;
+  birthDate?: Date;
+  course?: string;
+  enrollmentDate?: Date;
+
+  // Endereço
+  cep?: string;
+  state?: string;
+  city?: string;
+  neighborhood?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+
+  // Necessidades especiais (novo formato)
+  specialNeeds?: Array<{
+    specialNeedId: number;
+    specialNeedName: string;
+    specialNeedSubcategoryId: number;
+    specialNeedSubcategoryName: string;
+  }>;
+  needDuration?: NeedDuration;
+
+  // Dados de controle
+  observations?: string;
+  supportNotes?: string;
+  isStudent?: boolean;
+}
