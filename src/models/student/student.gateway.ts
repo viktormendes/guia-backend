@@ -38,7 +38,7 @@ export class StudentGateway
       }
 
       const user = await this.userService.validateToken(token);
-      if (!user || user.role !== Role.STUDENT) {
+      if (!user) {
         console.log(
           '[SOCKET] Token inválido ou usuário não é estudante, desconectando',
         );
