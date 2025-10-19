@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateSpecialNeedsTables1700000000000
+export class CreateSpecialNeedsTables1741218438019
   implements MigrationInterface
 {
-  name = 'CreateSpecialNeedsTables1700000000000';
+  name = 'CreateSpecialNeedsTables1741218438019';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar tabela special_needs
