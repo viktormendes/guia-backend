@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateStudentProfileTable1700000000003
+export class CreateStudentProfileTable1741218438020
   implements MigrationInterface
 {
-  name = 'CreateStudentProfileTable1700000000003';
+  name = 'CreateStudentProfileTable1741218438020';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar enum para Gender
