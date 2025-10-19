@@ -134,12 +134,12 @@ export class HelpRequestService implements OnModuleInit {
       relations: [
         'student',
         'student.studentProfile',
-        'student.studentProfile.specialNeed',
-        'student.studentProfile.specialNeedSubcategory',
+        'student.studentProfile.specialNeedSubcategories',
+        'student.studentProfile.specialNeedSubcategories.specialNeed',
         'helper',
         'helper.studentProfile',
-        'helper.studentProfile.specialNeed',
-        'helper.studentProfile.specialNeedSubcategory',
+        'helper.studentProfile.specialNeedSubcategories',
+        'helper.studentProfile.specialNeedSubcategories.specialNeed',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -159,12 +159,12 @@ export class HelpRequestService implements OnModuleInit {
       relations: [
         'student',
         'student.studentProfile',
-        'student.studentProfile.specialNeed',
-        'student.studentProfile.specialNeedSubcategory',
+        'student.studentProfile.specialNeedSubcategories',
+        'student.studentProfile.specialNeedSubcategories.specialNeed',
         'helper',
         'helper.studentProfile',
-        'helper.studentProfile.specialNeed',
-        'helper.studentProfile.specialNeedSubcategory',
+        'helper.studentProfile.specialNeedSubcategories',
+        'helper.studentProfile.specialNeedSubcategories.specialNeed',
       ],
     });
   }
@@ -175,12 +175,12 @@ export class HelpRequestService implements OnModuleInit {
       relations: [
         'student',
         'student.studentProfile',
-        'student.studentProfile.specialNeed',
-        'student.studentProfile.specialNeedSubcategory',
+        'student.studentProfile.specialNeedSubcategories',
+        'student.studentProfile.specialNeedSubcategories.specialNeed',
         'helper',
         'helper.studentProfile',
-        'helper.studentProfile.specialNeed',
-        'helper.studentProfile.specialNeedSubcategory',
+        'helper.studentProfile.specialNeedSubcategories',
+        'helper.studentProfile.specialNeedSubcategories.specialNeed',
       ],
       order: { createdAt: 'DESC' },
     });
