@@ -4,8 +4,9 @@ import {
   IsOptional,
   IsEnum,
   IsDateString,
-  IsNumber,
   IsBoolean,
+  IsArray,
+  IsInt,
 } from 'class-validator';
 import { Gender } from '../../../common/enums/gender.enum';
 import { MaritalStatus } from '../../../common/enums/marital-status.enum';
@@ -92,14 +93,11 @@ export class UpdateStudentDto {
   @IsString()
   complement?: string;
 
-  // Dados de necessidades especiais
+  // NOVO: Necessidades especiais (array de subcategorias)
   @IsOptional()
-  @IsNumber()
-  specialNeedId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  specialNeedSubcategoryId?: number;
+  @IsArray()
+  @IsInt({ each: true })
+  specialNeedSubcategories?: number[];
 
   @IsOptional()
   @IsEnum(NeedDuration)

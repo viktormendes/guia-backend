@@ -253,8 +253,14 @@ export class StudentService {
     }
 
     // Separar dados do usuário e do perfil
-    const { firstName, lastName, email, avatarUrl, ...profileData } =
-      updateStudentDto;
+    const {
+      firstName,
+      lastName,
+      email,
+      avatarUrl,
+      specialNeedSubcategories,
+      ...profileData
+    } = updateStudentDto;
 
     // Atualizar dados do usuário se fornecidos
     if (firstName !== undefined) user.firstName = firstName;
@@ -268,12 +274,30 @@ export class StudentService {
     if (user.studentProfile) {
       // Atualizar perfil existente
       Object.assign(user.studentProfile, profileData);
+
+      // Atualizar necessidades especiais se fornecidas
+      if (specialNeedSubcategories !== undefined) {
+        const subcategories =
+          await this.specialNeedSubcategoryRepository.findByIds(
+            specialNeedSubcategories,
+          );
+        user.studentProfile.specialNeedSubcategories = subcategories;
+      }
+
       await this.studentProfileRepository.save(user.studentProfile);
     } else {
       // Criar novo perfil
+      let subcategories: SpecialNeedSubcategory[] = [];
+      if (specialNeedSubcategories) {
+        subcategories = await this.specialNeedSubcategoryRepository.findByIds(
+          specialNeedSubcategories,
+        );
+      }
+
       const studentProfile = this.studentProfileRepository.create({
         userId: user.id,
         ...profileData,
+        specialNeedSubcategories: subcategories,
         isStudent: profileData.isStudent ?? true,
       });
       await this.studentProfileRepository.save(studentProfile);
