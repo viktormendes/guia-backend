@@ -30,7 +30,7 @@ export class UserService {
       where: { email: createUserDto.email },
     });
 
-    if (hasEmail) {
+    if (hasEmail && hasEmail.length > 0) {
       throw new BadRequestException('Email em uso');
     }
     const user = await this.UserRepo.create(createUserDto);
